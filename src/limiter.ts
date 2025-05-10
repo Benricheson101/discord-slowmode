@@ -4,25 +4,10 @@ import {PIDController} from './pidcontroller';
 export class ChannelLimiter extends PIDController {
   msgs = 0;
   users = new Set<string>();
-  #timer?: NodeJS.Timeout;
-  private api: API;
-  readonly channelID: string;
 
   currentSlowmode = 0;
 
-  constructor({
-    api,
-    channelID,
-    pid,
-  }: {
-    api: API;
-    channelID: string;
-    pid: ConstructorParameters<typeof PIDController>[0];
-  }) {
-    super(pid);
-    this.api = api;
-    this.channelID = channelID;
-  }
+  hasStarted = false;
 
   controlLoop() {
     let actualRate = this.msgs / this.users.size / this.dt;
@@ -55,6 +40,8 @@ export class ChannelLimiter extends PIDController {
   }
 
   addMessage(msg: APIMessage) {
+    this.hasStarted = true;
+
     const author = msg.author.id;
     this.msgs++;
     this.users.add(author);
@@ -65,47 +52,6 @@ export class ChannelLimiter extends PIDController {
   cleanup() {
     this.msgs = 0;
     this.users.clear();
-  }
-
-  start() {
-    const dt = this.dt;
-    console.log(
-      `ChannelLimiter<${this.channelID}> started. interval=${dt * 1_000}ms`
-    );
-
-    this.#timer = setInterval(() => {
-      const newSlowmode = this.controlLoop();
-
-      if (newSlowmode === this.currentSlowmode) {
-        this.cleanup();
-        return;
-      }
-
-      this.cleanup();
-
-      this.api.channels
-        .edit(this.channelID, {rate_limit_per_user: newSlowmode})
-        .then(res => {
-          console.log(
-            'Set new channel slowmode to:',
-            (res as APITextChannel).rate_limit_per_user || 0
-          );
-        })
-        .catch(err => {
-          console.error('Failed to set channel slowmode to:', newSlowmode, err);
-        })
-        .finally(() => {
-          this.cleanup();
-        });
-    }, dt * 1_000);
-  }
-
-  stop() {
-    if (!this.#timer) {
-      return;
-    }
-    clearInterval(this.#timer);
-    this.#timer = undefined;
   }
 }
 
