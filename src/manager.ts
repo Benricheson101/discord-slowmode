@@ -31,7 +31,7 @@ export class ChannelLimiterManager extends Map<string, ChannelLimiter> {
   }
 
   #doUpdate(channelID: string, cl: ChannelLimiter) {
-    const prev = cl.lastOutput;
+    const prev = Math.round(cl.lastOutput);
 
     const newSlowmode = cl.controlLoop();
     cl.cleanup();
