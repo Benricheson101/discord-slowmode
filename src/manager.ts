@@ -5,6 +5,7 @@ import {ChannelLimiter} from './limiter';
 
 type SlowmodeConfig = {
   dt: number;
+  log_channel?: string;
   channels: {
     [id: string]: Omit<ConstructorParameters<typeof ChannelLimiter>[0], 'dt'>;
   };
@@ -15,20 +16,23 @@ export class ChannelLimiterManager extends Map<string, ChannelLimiter> {
 
   constructor(
     private api: API,
-    readonly dt: number
+    readonly dt: number,
+    readonly logChannelID?: string
   ) {
     super();
   }
 
   new(
     channelID: string,
-    arg: Omit<ConstructorParameters<typeof ChannelLimiter>[0], 'dt'>
+    arg: Omit<ConstructorParameters<typeof ChannelLimiter>[0], 'dt'>,
   ) {
     const cl = new ChannelLimiter({...arg, sp: arg.sp / 60, dt: this.dt});
     this.set(channelID, cl);
   }
 
   #doUpdate(channelID: string, cl: ChannelLimiter) {
+    const prev = cl.lastOutput;
+
     const newSlowmode = cl.controlLoop();
     cl.cleanup();
 
@@ -43,9 +47,21 @@ export class ChannelLimiterManager extends Map<string, ChannelLimiter> {
           'set new channel slowmode to:',
           (res as APITextChannel).rate_limit_per_user || 0
         );
+
+        if (this.logChannelID) {
+          this.api.channels.createMessage(this.logChannelID, {
+            content: `:white_check_mark: Updated slowmode in <#${channelID}> (${channelID}): \`${prev}s => ${newSlowmode}s\``
+          });
+        }
       })
       .catch(err => {
         console.error('failed to set channel slowmode to:', newSlowmode, err);
+
+        if (this.logChannelID) {
+          this.api.channels.createMessage(this.logChannelID, {
+            content: `:x: Failed to change slowmode in <#${channelID}> (${channelID}): ${err.message}`,
+          });
+        }
       });
   }
 
@@ -79,7 +95,7 @@ export class ChannelLimiterManager extends Map<string, ChannelLimiter> {
     const rest = new REST().setToken(token);
     const api = new API(rest);
 
-    const mgr = new ChannelLimiterManager(api, conf.dt);
+    const mgr = new ChannelLimiterManager(api, conf.dt, conf.log_channel);
 
     for (const channel in conf.channels) {
       mgr.new(channel, conf.channels[channel]);
