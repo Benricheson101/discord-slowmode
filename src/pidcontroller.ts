@@ -109,7 +109,7 @@ export class PIDController {
       return this.lastOutput;
     }
 
-    assert(this.lastOutput);
+    assert(typeof this.lastOutput === 'number');
     return this.lastOutput;
   }
 
