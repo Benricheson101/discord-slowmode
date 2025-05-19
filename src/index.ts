@@ -46,7 +46,11 @@ client.on(GatewayDispatchEvents.ChannelUpdate, async ({data: channel}) => {
   cl.setCurrentSlowmode(channel.rate_limit_per_user || 0);
 });
 
-client.on(GatewayDispatchEvents.MessageCreate, ({data: msg}) => {
+client.on(GatewayDispatchEvents.MessageCreate, ({data: msg, api}) => {
+  if (msg.content === 'slow:ping') {
+    api.channels.createMessage(msg.channel_id, {content: 'Pong!'});
+  }
+
   if (!cm.has(msg.channel_id)) {
     return;
   }
