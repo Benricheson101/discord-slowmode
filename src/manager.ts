@@ -67,6 +67,7 @@ export class ChannelLimiterManager extends Map<string, ChannelLimiter> {
 
   start() {
     console.log(`[ChannelLimiterManager] started. channels=${this.size} dt=${this.dt}`);
+    this.stop();
     this.#timer = setInterval(() => {
       for (const entry of this.entries()) {
         // skip channels that haven't had any activity at all

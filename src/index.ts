@@ -22,7 +22,7 @@ const cm = ChannelLimiterManager.load();
 
 const client = new Client({rest, gateway});
 
-client.on(GatewayDispatchEvents.Ready, ({data: {user}}) => {
+client.once(GatewayDispatchEvents.Ready, ({data: {user}}) => {
   console.log('ready as', user.username);
   cm.start();
 });
